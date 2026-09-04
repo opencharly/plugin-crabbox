@@ -63,8 +63,8 @@ func resolveCLICall(m, runID string) (cliCall, error) {
 	case "doctor":
 		return cliCall{Args: []string{"doctor"}}, nil
 	case "leases":
-		// 0.48.x: plain `crabbox status` (no --all flag; probe-verified).
-		return cliCall{Args: []string{"status"}}, nil
+		// 0.48.x: `crabbox list` enumerates leases (status requires an id).
+		return cliCall{Args: []string{"list"}}, nil
 	case "usage":
 		return cliCall{Args: []string{"usage"}}, nil
 	case "events":
