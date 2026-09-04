@@ -42,7 +42,8 @@ plugin-crabbox:
         plan:
             - check: the crabbox verb dispatches through the provider registry and reports the pinned CLI version on a live deployment
               id: crabbox-verb-dispatches
-              crabbox: version
+              crabbox:
+                method: version
               stdout:
                 - contains: "0.48.1"
               eventually: 60s
