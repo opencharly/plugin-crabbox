@@ -38,7 +38,7 @@ func TestResolveCLICall(t *testing.T) {
 		{"providers", []string{"providers"}, ""},
 		{"config", []string{"config", "show"}, ""},
 		{"doctor", []string{"doctor"}, ""},
-		{"leases", []string{"status", "--all"}, ""},
+		{"leases", []string{"status"}, ""},
 		{"usage", []string{"usage"}, ""},
 		{"events", []string{"events", "run_abc"}, "run_abc"},
 		{"logs", []string{"logs", "run_abc"}, "run_abc"},
