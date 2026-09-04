@@ -85,7 +85,7 @@ func resolveCLICall(m, runID string) (cliCall, error) {
 // coordinator endpoint and returns the body (or the json_path-extracted value) for
 // the shared matcher pipeline. A non-2xx status is NOT an error here — the caller's
 // stdout matcher asserts the body, and the shared pipeline compares the exit status.
-func dispatchHTTP(ctx context.Context, cc kit.CheckContext, addr string, op *spec.Op, in *params.CrabboxInput) (string, error) {
+func dispatchHTTP(ctx context.Context, cc kit.CheckContext, addr string, in *params.CrabboxInput) (string, error) {
 	probe, err := resolveHTTPProbe(in.Method)
 	if err != nil {
 		return "", err

@@ -83,7 +83,7 @@ func (provider) Invoke(ctx context.Context, req *pb.InvokeRequest) (*pb.InvokeRe
 			"crabbox: %s has no resolved coordinator endpoint (box=%q)", method, env.Box))
 	}
 
-	out, runErr := dispatchHTTP(ctx, cc, addr, &op, &in)
+	out, runErr := dispatchHTTP(ctx, cc, addr, &in)
 
 	// The shared exit/stdout/stderr verdict pipeline (R3).
 	return sdk.VerbVerdict("crabbox", method, out, runErr, &op, false)
