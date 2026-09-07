@@ -1,7 +1,7 @@
 version: 2026.240.1943
 plugin-crabbox:
     candy:
-        version: 2026.247.0100
+        version: 2026.250.0100
         description: |-
             OUT-OF-TREE charly plugin serving the `crabbox` check verb — a standalone
             Go module (go.mod + main.go) that probes the Crabbox CLI and its optional
@@ -45,7 +45,7 @@ plugin-crabbox:
               crabbox:
                 method: version
               stdout:
-                - contains: "0.48.1"
+                - contains: "0.51.0"
               eventually: 60s
               retry_interval: 5s
               context:

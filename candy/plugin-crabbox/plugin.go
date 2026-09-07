@@ -38,7 +38,7 @@ var schemaFS embed.FS
 
 // pluginCalVer is this candy's CalVer, advertised over Describe. It must match the
 // `version:` in charly.yml — the host reports it when the verb resolves.
-const pluginCalVer = "2026.247.0100"
+const pluginCalVer = "2026.250.0100"
 
 // NewProvider returns the crabbox provider.
 func NewProvider() pb.ProviderServer { return &provider{} }
