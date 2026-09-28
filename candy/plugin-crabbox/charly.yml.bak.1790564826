@@ -1,5 +1,7 @@
+version: 2026.240.1943
 plugin-crabbox:
     candy:
+        version: 2026.250.0100
         description: |-
             OUT-OF-TREE charly plugin serving the `crabbox` check verb — a standalone
             Go module (go.mod + main.go) that probes the Crabbox CLI and its optional
@@ -48,6 +50,7 @@ plugin-crabbox:
               retry_interval: 5s
               context:
                 - runtime
+
 crabbox-skill:
     skill:
         name: crabbox
@@ -60,7 +63,7 @@ crabbox-skill:
             out-of-process by plugin-crabbox.
         triggers:
             - "the `crabbox:` check verb / probing the Crabbox CLI or coordinator from a candy or box plan"
-        content: |-
+        content: |
             # crabbox — check verb
 
             ## Overview
