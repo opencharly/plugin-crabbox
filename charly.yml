@@ -9,6 +9,8 @@
 # applies, and the STOCK `charly box validate` step starts working with no workflow
 # change. This file declares no entities of its own - it only tells charly where to look.
 discover:
+    - path: box
+      recursive: true
     - path: candy
       recursive: true
 # ===========================================================================# WI-11's R10 gate: the crabbox verb driving the CLI in-venue, with the provider
