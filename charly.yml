@@ -11,3 +11,50 @@
 discover:
     - path: candy
       recursive: true
+# ===========================================================================# WI-11's R10 gate: the crabbox verb driving the CLI in-venue, with the provider
+# selection and the firecracker config this work item added.
+#
+# The assertions are deliberately the CREDENTIAL-FREE ones the verb documents
+# (version, providers, doctor on a fresh HOME), because a broker-backed method
+# needs a prior crabbox login in the venue and a bed must skip visibly rather
+# than fake a live service.
+#
+# doctor with provider firecracker is the step that FAILS without this change:
+# the input schema had no provider field, so the runtime schema check rejects it
+# before the CLI is ever invoked. That is what makes this coverage fail without
+# the change rather than merely pass with it.
+#
+# NOTE ON THIS COMMENT: it was first written through an UNQUOTED heredoc, and
+# bash executed the backticked fragments inside it before the file existed - the
+# second time this exact slip happened in this session, and the reason the scan
+# for it now covers backtick stripping as well as empty shell variables.
+# =============================================================================
+check-crabbox-pod:
+    pod:
+        image: check-crabbox-pod-image
+        disposable: true
+        lifecycle: test
+        description: >-
+            The crabbox verb on a real pod: the pinned CLI in-venue, the verb wiring both halves of the
+            two-class plugin (a  provider that also serves its own CUE schema), and the
+            provider-selection pass-through this change added, asserted against the CLI's own vocabulary.
+        plan:
+            - check: the plugin's verb answers through the scalar sugar, naming the CLI it drives
+              id: crabbox-version
+              crabbox: version
+            - check: the CLI reports its provider catalogue, which is where the firecracker provider lives
+              id: crabbox-providers
+              crabbox: providers
+            - check: the provider selection reaches the CLI, and the credential-free doctor accepts it
+              id: crabbox-doctor-firecracker-provider
+              crabbox:
+                  method: doctor
+                  provider: firecracker
+                  target: linux
+            - check: the firecracker config keys pass through to the CLI's own flags
+              id: crabbox-firecracker-config
+              crabbox:
+                  method: providers
+                  provider: firecracker
+                  firecracker:
+                      binary: firecracker
