@@ -37,5 +37,19 @@
 	json_path?: string @go(JSONPath)
 
 	// run_id — run identifier required by the events/logs methods.
-	run_id?: string
+	//
+	// @go names the generated field: the committed params file carried a hand-shaped
+	// `RunID` while the generator's default for `run_id` is `Run_id`, i.e. the generated
+	// file had drifted from this schema and no gate here caught it (this repo runs
+	// `charly candy params --check` nowhere). The directive is the schema's own mechanism —
+	// the same one `json_path` uses — so the regeneration is a no-op from here on.
+	run_id?: string @go(RunID)
+
+	// provider — the provider to select for the methods whose CLI command DEFINES the
+	// `--provider <name>` flag. MEASURED at the pinned v0.78.0: `doctor` and `leases`
+	// (which runs `crabbox list`) accept it; `usage` and `providers` reject it
+	// ("flag provided but not defined: -provider"), so it is passed through only where the
+	// CLI defines it. Unset = the CLI's own configured/ambient selection, which is what the
+	// previous surface always got.
+	provider?: string
 }

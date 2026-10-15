@@ -47,9 +47,16 @@ Then author the verb in a plan (scalar sugar shown):
 - check: the pinned crabbox CLI version is installed
   crabbox: version
   stdout:
-    - contains: "0.51.0"
+    - matches: "0\\.78\\.0"
   eventually: 60s
   retry_interval: 5s
+
+- check: the local container provider is selected and its local prerequisites are ready
+  crabbox:
+    method: doctor
+    provider: local-container
+  stdout:
+    - contains: "provider=local-container"
 ```
 
 Install the CLI itself with the `crabbox` candy
