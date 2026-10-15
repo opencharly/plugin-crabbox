@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/opencharly/plugin-crabbox/candy/plugin-crabbox/params"
@@ -73,13 +74,26 @@ func acceptsProvider(m string) bool {
 
 // resolveCLICall builds the in-venue CLI invocation for a method, appending the provider
 // selection where the CLI defines it (see acceptsProvider).
-func resolveCLICall(m, runID, provider string) (cliCall, error) {
+func resolveCLICall(m, runID, provider, target string, fc map[string]any) (cliCall, error) {
 	args, err := resolveCLIArgs(m, runID)
 	if err != nil {
 		return cliCall{}, err
 	}
-	if provider != "" && acceptsProvider(m) {
-		args = append(args, "--provider", provider)
+	if acceptsProvider(m) {
+		if provider != "" {
+			args = append(args, "--provider", provider)
+		}
+		if target != "" {
+			args = append(args, "--target", target)
+		}
+		keys := make([]string, 0, len(fc))
+		for k := range fc {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			args = append(args, "--firecracker-"+k, fmt.Sprintf("%v", fc[k]))
+		}
 	}
 	return cliCall{Args: args}, nil
 }
@@ -151,7 +165,7 @@ func dispatchHTTP(ctx context.Context, cc kit.CheckContext, addr string, in *par
 // invokeCLI runs one CLI method inside the venue over the reverse channel and
 // returns the shared verdict.
 func invokeCLI(ctx context.Context, cc kit.CheckContext, op *spec.Op, in *params.CrabboxInput) (*pb.InvokeReply, error) {
-	call, err := resolveCLICall(in.Method, in.RunID, in.Provider)
+	call, err := resolveCLICall(in.Method, in.RunID, in.Provider, in.Target, in.Firecracker)
 	if err != nil {
 		return sdk.ResultJSON("fail", err.Error())
 	}

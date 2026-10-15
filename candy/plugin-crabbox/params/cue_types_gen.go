@@ -56,4 +56,15 @@ type CrabboxInput struct {
 	// CLI defines it. Unset = the CLI's own configured/ambient selection, which is what the
 	// previous surface always got.
 	Provider string `yaml:"provider,omitempty" json:"provider,omitempty"`
+
+	// target — the provider's target platform, passed through as the CLI's `--target <os>` flag.
+	// The firecracker provider is Linux-only, so `target: linux` is the meaningful value there.
+	Target string `yaml:"target,omitempty" json:"target,omitempty"`
+
+	// firecracker — the provider's own configuration keys, passed through as the CLI's
+	// `--firecracker-<key> <value>` flags. Measured from the provider's documented Configuration
+	// section, which shows `firecracker:` carrying at least `binary:`. The block is deliberately OPEN
+	// because the provider's key set is its own surface: a closed copy here would drift the moment
+	// upstream adds a key (R2).
+	Firecracker map[string]any/* CUE top */ `yaml:"firecracker,omitempty" json:"firecracker,omitempty"`
 }

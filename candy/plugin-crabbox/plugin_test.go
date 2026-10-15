@@ -36,26 +36,36 @@ func TestResolveCLICall(t *testing.T) {
 		// provider is the input's provider selection; accepted only by the methods whose
 		// CLI command defines `--provider` (measured on the pinned v0.78.0: doctor, leases).
 		provider string
+		// target and fc are the firecracker-config surface: `--target <os>` and `--firecracker-<key> <v>`.
+		// They follow the SAME measured allowlist as provider, because they are the same method's flags.
+		target string
+		fc     map[string]any
 	}{
-		{"version", []string{"--version"}, "", ""},
-		{"providers", []string{"providers"}, "", ""},
-		{"config", []string{"config", "show"}, "", ""},
-		{"doctor", []string{"doctor"}, "", ""},
-		{"leases", []string{"list"}, "", ""},
-		{"usage", []string{"usage"}, "", ""},
-		{"events", []string{"events", "run_abc"}, "run_abc", ""},
-		{"logs", []string{"logs", "run_abc"}, "run_abc", ""},
+		{"version", []string{"--version"}, "", "", "", nil},
+		{"providers", []string{"providers"}, "", "", "", nil},
+		{"config", []string{"config", "show"}, "", "", "", nil},
+		{"doctor", []string{"doctor"}, "", "", "", nil},
+		{"leases", []string{"list"}, "", "", "", nil},
+		{"usage", []string{"usage"}, "", "", "", nil},
+		{"events", []string{"events", "run_abc"}, "run_abc", "", "", nil},
+		{"logs", []string{"logs", "run_abc"}, "run_abc", "", "", nil},
 		// The pass-through, and its boundary: doctor and leases take it, and a method whose
 		// command does NOT define the flag must not grow it (that would turn a working probe
 		// into "flag provided but not defined").
-		{"doctor", []string{"doctor", "--provider", "local-container"}, "", "local-container"},
-		{"leases", []string{"list", "--provider", "aws"}, "", "aws"},
-		{"usage", []string{"usage"}, "", "aws"},
-		{"providers", []string{"providers"}, "", "aws"},
-		{"version", []string{"--version"}, "", "aws"},
+		{"doctor", []string{"doctor", "--provider", "local-container"}, "", "local-container", "", nil},
+		{"leases", []string{"list", "--provider", "aws"}, "", "aws", "", nil},
+		{"usage", []string{"usage"}, "", "aws", "", nil},
+		{"providers", []string{"providers"}, "", "aws", "", nil},
+		{"version", []string{"--version"}, "", "aws", "", nil},
+		// The firecracker-config surface, and its boundary: doctor takes --target and
+		// --firecracker-*; a method that does NOT define them must not grow them.
+		{"doctor", []string{"doctor", "--target", "linux"}, "", "", "linux", nil},
+		{"doctor", []string{"doctor", "--firecracker-binary", "firecracker"}, "", "", "",
+			map[string]any{"binary": "firecracker"}},
+		{"providers", []string{"providers"}, "", "", "linux", map[string]any{"binary": "firecracker"}},
 	}
 	for _, c := range cases {
-		call, err := resolveCLICall(c.method, c.runID, c.provider)
+		call, err := resolveCLICall(c.method, c.runID, c.provider, c.target, c.fc)
 		if err != nil {
 			t.Fatalf("resolveCLICall(%q): %v", c.method, err)
 		}
@@ -69,10 +79,10 @@ func TestResolveCLICall(t *testing.T) {
 			}
 		}
 	}
-	if _, err := resolveCLICall("bogus", "", ""); err == nil {
+	if _, err := resolveCLICall("bogus", "", "", "", nil); err == nil {
 		t.Error("resolveCLICall(bogus) = nil error, want error")
 	}
-	if _, err := resolveCLICall("events", "", ""); err == nil {
+	if _, err := resolveCLICall("events", "", "", "", nil); err == nil {
 		t.Error("resolveCLICall(events, no run_id) = nil error, want error")
 	}
 }
