@@ -48,10 +48,10 @@ check-crabbox-pod:
               id: crabbox-providers
               crabbox: providers
             - check: the provider selection reaches the CLI, and the credential-free doctor accepts it
-              id: crabbox-doctor-firecracker-provider
+              id: crabbox-doctor-provider
               crabbox:
                   method: doctor
-                  provider: firecracker
+                  provider: local-container
                   target: linux
             - check: the firecracker config keys pass through to the CLI's own flags
               id: crabbox-firecracker-config
