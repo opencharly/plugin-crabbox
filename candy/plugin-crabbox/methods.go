@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/opencharly/plugin-crabbox/candy/plugin-crabbox/params"
@@ -51,34 +52,85 @@ func resolveHTTPProbe(m string) (httpProbe, error) {
 	return httpProbe{}, fmt.Errorf("crabbox: unknown HTTP probe method %q", m)
 }
 
-// resolveCLICall builds the in-venue CLI invocation for a method.
-func resolveCLICall(m, runID string) (cliCall, error) {
+// acceptsProvider reports whether the pinned CLI's command for a method defines the
+// `--provider <name>` selection flag. MEASURED against the release the org pins
+// (v0.78.0 — the artifact layer-crabbox downloads), not inferred:
+//
+//	$ crabbox doctor --provider aws     -> ok provider-selection provider=aws source=flag selected=true
+//	$ crabbox list   --provider aws     -> the ID/NAME/STATE/TYPE/IP inventory table
+//	$ crabbox usage  --provider aws     -> flag provided but not defined: -provider
+//	$ crabbox providers --provider aws  -> flag provided but not defined: -provider
+//
+// So the input rides along for doctor and leases and nowhere else: attaching it to a
+// command that does not define it turns a working probe into an argument error, which is
+// exactly the R4 failure this verb exists to avoid (a documented command that does not work).
+func acceptsProvider(m string) bool {
+	switch m {
+	case "doctor", "leases":
+		return true
+	}
+	return false
+}
+
+// resolveCLICall builds the in-venue CLI invocation for a method, appending the provider
+// selection where the CLI defines it (see acceptsProvider).
+func resolveCLICall(m, runID, provider, target string, fc map[string]any) (cliCall, error) {
+	args, err := resolveCLIArgs(m, runID)
+	if err != nil {
+		return cliCall{}, err
+	}
+	if acceptsProvider(m) {
+		if provider != "" {
+			args = append(args, "--provider", provider)
+		}
+		if target != "" {
+			args = append(args, "--target", target)
+		}
+		keys := make([]string, 0, len(fc))
+		for k := range fc {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			args = append(args, "--firecracker-"+k, fmt.Sprintf("%v", fc[k]))
+		}
+	}
+	return cliCall{Args: args}, nil
+}
+
+// resolveCLIArgs is the method → argv table.
+func resolveCLIArgs(m, runID string) ([]string, error) {
 	switch m {
 	case "version":
-		return cliCall{Args: []string{"--version"}}, nil
+		return []string{"--version"}, nil
 	case "providers":
-		return cliCall{Args: []string{"providers"}}, nil
+		return []string{"providers"}, nil
 	case "config":
-		return cliCall{Args: []string{"config", "show"}}, nil
+		return []string{"config", "show"}, nil
 	case "doctor":
-		return cliCall{Args: []string{"doctor"}}, nil
+		return []string{"doctor"}, nil
 	case "leases":
-		// `crabbox list` enumerates leases (status requires an id) — verified against the v0.51.0 CLI surface.
-		return cliCall{Args: []string{"list"}}, nil
+		// `crabbox list` is the inventory: at the pinned v0.78.0 it prints an
+		// ID/NAME/STATE/TYPE/IP table, and the help lists it as "List Crabbox machines".
+		// The per-lease command is `crabbox status <id>` ("Show lease state; add --wait to
+		// block until ready"), which has NO `--all` flag — `crabbox status --all` exits with
+		// "flag provided but not defined: -all". Verified against the pinned v0.78.0 artifact;
+		// the previous provenance line here claimed v0.51.0, twenty-seven releases back.
+		return []string{"list"}, nil
 	case "usage":
-		return cliCall{Args: []string{"usage"}}, nil
+		return []string{"usage"}, nil
 	case "events":
 		if runID == "" {
-			return cliCall{}, fmt.Errorf("crabbox: events requires run_id")
+			return nil, fmt.Errorf("crabbox: events requires run_id")
 		}
-		return cliCall{Args: []string{"events", runID}}, nil
+		return []string{"events", runID}, nil
 	case "logs":
 		if runID == "" {
-			return cliCall{}, fmt.Errorf("crabbox: logs requires run_id")
+			return nil, fmt.Errorf("crabbox: logs requires run_id")
 		}
-		return cliCall{Args: []string{"logs", runID}}, nil
+		return []string{"logs", runID}, nil
 	}
-	return cliCall{}, fmt.Errorf("crabbox: unknown CLI method %q", m)
+	return nil, fmt.Errorf("crabbox: unknown CLI method %q", m)
 }
 
 // dispatchHTTP runs one HTTP probe method from the host against the resolved
@@ -113,7 +165,7 @@ func dispatchHTTP(ctx context.Context, cc kit.CheckContext, addr string, in *par
 // invokeCLI runs one CLI method inside the venue over the reverse channel and
 // returns the shared verdict.
 func invokeCLI(ctx context.Context, cc kit.CheckContext, op *spec.Op, in *params.CrabboxInput) (*pb.InvokeReply, error) {
-	call, err := resolveCLICall(in.Method, in.RunID)
+	call, err := resolveCLICall(in.Method, in.RunID, in.Provider, in.Target, in.Firecracker)
 	if err != nil {
 		return sdk.ResultJSON("fail", err.Error())
 	}

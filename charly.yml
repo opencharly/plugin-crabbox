@@ -9,5 +9,44 @@
 # applies, and the STOCK `charly box validate` step starts working with no workflow
 # change. This file declares no entities of its own - it only tells charly where to look.
 discover:
+    - path: box
+      recursive: true
     - path: candy
       recursive: true
+# ===========================================================================# WI-11's R10 gate: the crabbox verb driving the CLI in-venue, with the provider
+# selection and the firecracker config this work item added.
+#
+# The assertions are deliberately the CREDENTIAL-FREE ones the verb documents
+# (version, providers), because a broker-backed method
+# needs a prior crabbox login in the venue and a bed must skip visibly rather
+# than fake a live service.
+#
+# crabbox-firecracker-config is the step that FAILS without this change: it declares
+# a `firecracker:` block, and the input schema had no such field, so the runtime schema
+# check rejected the step before the CLI was ever invoked (the bed's own history shows
+# exactly that parse failure). That is what makes this coverage fail without the change
+# rather than merely pass with it.
+check-crabbox-pod:
+    pod:
+        image: check-crabbox-pod-image
+        disposable: true
+        lifecycle: test
+        description: >-
+            The crabbox verb on a real pod: the pinned CLI in-venue, the verb wiring both halves of the
+            two-class plugin (a  provider that also serves its own CUE schema), and the
+            provider-selection pass-through this change added, asserted against the CLI's own vocabulary.
+        plan:
+            - check: the plugin's verb answers through the scalar sugar, naming the CLI it drives
+              id: crabbox-version
+              crabbox: version
+            - check: the CLI reports its provider catalogue, which is where the firecracker provider lives
+              id: crabbox-providers
+              crabbox: providers
+            - check: the firecracker block is accepted by the input schema, and providers
+                correctly receives none of its flags
+              id: crabbox-firecracker-config
+              crabbox:
+                  method: providers
+                  provider: firecracker
+                  firecracker:
+                      binary: firecracker

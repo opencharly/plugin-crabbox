@@ -1,0 +1,16 @@
+# The bed's IMAGE: the crabbox CLI the verb drives in-venue, and this plugin itself, composed from the LOCAL
+# candy so the bed tests the tree under review rather than a published one.
+#
+# The plugin is EXTERNAL (source: github.com/opencharly/plugin-crabbox/candy/plugin-crabbox), so charly
+# connects it by word at runtime from the candy ref - nothing is compiled in. A POD is the substrate because
+# its image is built here with the plugin already composed: a VM or local target would need the plugin shipped
+# to it, which is opencharly/charly#916 and not this bed's business.
+check-crabbox-pod-image:
+    candy:
+        description: The crabbox verb's own environment — the pinned Crabbox CLI and the plugin under review.
+        distro: [fedora]
+        build: [rpm]
+        base: quay.io/fedora/fedora:43
+        candy:
+            - '@github.com/opencharly/layer-crabbox:v2026.287.2338'
+            - plugin-crabbox
