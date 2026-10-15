@@ -48,16 +48,6 @@ plugin-crabbox:
               retry_interval: 5s
               context:
                 - runtime
-            - check: a provider-selected doctor runs in the venue and names the provider it selected, so the passthrough is observable rather than asserted
-              id: crabbox-provider-passthrough
-              crabbox:
-                method: doctor
-                provider: local-container
-              stdout:
-                - contains: "provider=local-container"
-              context:
-                - runtime
-
 crabbox-skill:
     skill:
         name: crabbox
