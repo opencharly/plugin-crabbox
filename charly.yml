@@ -42,7 +42,8 @@ check-crabbox-pod:
             - check: the CLI reports its provider catalogue, which is where the firecracker provider lives
               id: crabbox-providers
               crabbox: providers
-            - check: the firecracker config keys pass through to the CLI's own flags
+            - check: the firecracker block is accepted by the input schema, and providers
+                correctly receives none of its flags
               id: crabbox-firecracker-config
               crabbox:
                   method: providers

@@ -1,7 +1,6 @@
 .build/
 *.log
 .check/
-.build/
 .containerignore
 .dockerignore
 image/
