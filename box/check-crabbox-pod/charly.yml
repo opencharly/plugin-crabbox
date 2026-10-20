@@ -5,12 +5,19 @@
 # connects it by word at runtime from the candy ref - nothing is compiled in. A POD is the substrate because
 # its image is built here with the plugin already composed: a VM or local target would need the plugin shipped
 # to it, which is opencharly/charly#916 and not this bed's business.
+#
+# The image is a DISPOSABLE TEST FIXTURE and pins the host platform: the default multi-arch build needs arm64
+# emulation, which a runner may not have (measured: a multi-arch build dies on the arm64 stage with "exec
+# format error"). Pinning amd64 keeps the bed runnable everywhere the product's own boxes declare their
+# platforms; it does not narrow any product image (the distro-cachyos consumer boxes carry their own).
 check-crabbox-pod-image:
     candy:
         description: The crabbox verb's own environment — the pinned Crabbox CLI and the plugin under review.
         distro: [fedora]
         build: [rpm]
         base: quay.io/fedora/fedora:43
+        platform:
+            - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-crabbox:v2026.287.2338'
+            - '@github.com/opencharly/layer-crabbox:v2026.293.1001'
             - plugin-crabbox

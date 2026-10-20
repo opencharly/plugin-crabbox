@@ -46,7 +46,7 @@
 	run_id?: string @go(RunID)
 
 	// provider — the provider to select for the methods whose CLI command DEFINES the
-	// `--provider <name>` flag. MEASURED at the pinned v0.78.0: `doctor` and `leases`
+	// `--provider <name>` flag. MEASURED at the pinned v0.79.0: `doctor` and `leases`
 	// (which runs `crabbox list`) accept it; `usage` and `providers` reject it
 	// ("flag provided but not defined: -provider"), so it is passed through only where the
 	// CLI defines it. Unset = the CLI's own configured/ambient selection, which is what the
