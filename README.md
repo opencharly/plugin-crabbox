@@ -47,7 +47,7 @@ Then author the verb in a plan (scalar sugar shown):
 - check: the pinned crabbox CLI version is installed
   crabbox: version
   stdout:
-    - matches: "0\\.78\\.0"
+    - matches: "0\\.79\\.0"
   eventually: 60s
   retry_interval: 5s
 

@@ -34,7 +34,7 @@ func TestResolveCLICall(t *testing.T) {
 		args   []string
 		runID  string
 		// provider is the input's provider selection; accepted only by the methods whose
-		// CLI command defines `--provider` (measured on the pinned v0.78.0: doctor, leases).
+		// CLI command defines `--provider` (measured on the pinned v0.79.0: doctor, leases).
 		provider string
 		// target and fc are the firecracker-config surface: `--target <os>` and `--firecracker-<key> <v>`.
 		// They follow the SAME measured allowlist as provider, because they are the same method's flags.
@@ -88,7 +88,7 @@ func TestResolveCLICall(t *testing.T) {
 }
 
 // TestAcceptsProvider pins the boundary the CLI itself defines, so the input can never be
-// attached where it is an argument error. Measured against the pinned v0.78.0:
+// attached where it is an argument error. Measured against the pinned v0.79.0:
 //
 //	crabbox doctor --provider aws     -> ok provider-selection provider=aws source=flag selected=true
 //	crabbox list   --provider aws     -> the inventory table

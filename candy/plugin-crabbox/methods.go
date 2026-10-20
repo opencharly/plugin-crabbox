@@ -54,7 +54,7 @@ func resolveHTTPProbe(m string) (httpProbe, error) {
 
 // acceptsProvider reports whether the pinned CLI's command for a method defines the
 // `--provider <name>` selection flag. MEASURED against the release the org pins
-// (v0.78.0 — the artifact layer-crabbox downloads), not inferred:
+// (v0.79.0 — the artifact layer-crabbox downloads), not inferred:
 //
 //	$ crabbox doctor --provider aws     -> ok provider-selection provider=aws source=flag selected=true
 //	$ crabbox list   --provider aws     -> the ID/NAME/STATE/TYPE/IP inventory table
@@ -110,12 +110,12 @@ func resolveCLIArgs(m, runID string) ([]string, error) {
 	case "doctor":
 		return []string{"doctor"}, nil
 	case "leases":
-		// `crabbox list` is the inventory: at the pinned v0.78.0 it prints an
+		// `crabbox list` is the inventory: at the pinned v0.79.0 it prints an
 		// ID/NAME/STATE/TYPE/IP table, and the help lists it as "List Crabbox machines".
 		// The per-lease command is `crabbox status <id>` ("Show lease state; add --wait to
 		// block until ready"), which has NO `--all` flag — `crabbox status --all` exits with
-		// "flag provided but not defined: -all". Verified against the pinned v0.78.0 artifact;
-		// the previous provenance line here claimed v0.51.0, twenty-seven releases back.
+		// "flag provided but not defined: -all". Verified against the pinned v0.79.0 artifact;
+		// the previous provenance line here named a release twenty-eight versions back.
 		return []string{"list"}, nil
 	case "usage":
 		return []string{"usage"}, nil
