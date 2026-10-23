@@ -17,6 +17,16 @@ Canonical files:
   coordinator HTTP probe).
 - `candy/plugin-crabbox/schema/crabbox.cue` — the self-contained `#CrabboxInput`
   (single source for `params/cue_types_gen.go`).
+- `candy/plugin-crabbox/containerd_preflight.go` — the read-only
+  `containerd-preflight` method: the ONE place that decides "this lease leg cannot
+  run, and here is exactly what is missing" (a SKIP verdict, never a mock).
+- `.agents/skills/crabbox/SKILL.md` — the owning skill, projected into the
+  marketplace as `/charly-check:crabbox`.
+- `box/check-crabbox-containerd-e2e/charly.yml` — the disposable VM bed for a
+  containerd lease. Its mutating lease + checkpoint→fork→restore cycle is GATED by
+  the preflight and is authored only once its dependencies exist (source-built CLI,
+  W5 lease image, W2 seam 2, `xt_multiport`); until then a run reports the
+  preflight's SKIP and its reason. Never "fix" a run by removing that skip.
 - `charly.yml` — the root project manifest (`discover: candy`).
 - `.github/workflows/tag-on-merge.yml` — CalVer tag + `CHANGELOG/` on merge.
 - `README.md` — user overview only; never agent guidance.
@@ -40,8 +50,10 @@ Canonical files:
   `validate / validate`, defined in `opencharly/.github`); this repo has **no**
   per-repo candy gate.
 - The R10 consumers are the crabbox-bearing beds (`check-crabbox-pod`,
-  `check-crabbox-e2e-pod`), whose checks compose this plugin alongside the
+  `check-crabbox-containerd-e2e`), whose checks compose this plugin alongside the
   `crabbox` CLI candy and the coordinator candy.
+- `charly candy params plugin-crabbox --check` must report the generated params as
+  current after any schema edit.
 
 ## Modify this repo
 

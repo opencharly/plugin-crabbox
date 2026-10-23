@@ -40,32 +40,41 @@ func TestResolveCLICall(t *testing.T) {
 		// They follow the SAME measured allowlist as provider, because they are the same method's flags.
 		target string
 		fc     map[string]any
+		// cd is the containerd-config surface, passed through on the same allowlist.
+		cd map[string]any
 	}{
-		{"version", []string{"--version"}, "", "", "", nil},
-		{"providers", []string{"providers"}, "", "", "", nil},
-		{"config", []string{"config", "show"}, "", "", "", nil},
-		{"doctor", []string{"doctor"}, "", "", "", nil},
-		{"leases", []string{"list"}, "", "", "", nil},
-		{"usage", []string{"usage"}, "", "", "", nil},
-		{"events", []string{"events", "run_abc"}, "run_abc", "", "", nil},
-		{"logs", []string{"logs", "run_abc"}, "run_abc", "", "", nil},
+		{"version", []string{"--version"}, "", "", "", nil, nil},
+		{"providers", []string{"providers"}, "", "", "", nil, nil},
+		{"describe", []string{"providers", "describe", "containerd", "--json"}, "", "containerd", "", nil, nil},
+		{"config", []string{"config", "show"}, "", "", "", nil, nil},
+		{"doctor", []string{"doctor"}, "", "", "", nil, nil},
+		{"leases", []string{"list"}, "", "", "", nil, nil},
+		{"usage", []string{"usage"}, "", "", "", nil, nil},
+		{"events", []string{"events", "run_abc"}, "run_abc", "", "", nil, nil},
+		{"logs", []string{"logs", "run_abc"}, "run_abc", "", "", nil, nil},
 		// The pass-through, and its boundary: doctor and leases take it, and a method whose
 		// command does NOT define the flag must not grow it (that would turn a working probe
 		// into "flag provided but not defined").
-		{"doctor", []string{"doctor", "--provider", "local-container"}, "", "local-container", "", nil},
-		{"leases", []string{"list", "--provider", "aws"}, "", "aws", "", nil},
-		{"usage", []string{"usage"}, "", "aws", "", nil},
-		{"providers", []string{"providers"}, "", "aws", "", nil},
-		{"version", []string{"--version"}, "", "aws", "", nil},
+		{"doctor", []string{"doctor", "--provider", "local-container"}, "", "local-container", "", nil, nil},
+		{"leases", []string{"list", "--provider", "aws"}, "", "aws", "", nil, nil},
+		{"usage", []string{"usage"}, "", "aws", "", nil, nil},
+		{"providers", []string{"providers"}, "", "aws", "", nil, nil},
+		{"version", []string{"--version"}, "", "aws", "", nil, nil},
 		// The firecracker-config surface, and its boundary: doctor takes --target and
 		// --firecracker-*; a method that does NOT define them must not grow them.
-		{"doctor", []string{"doctor", "--target", "linux"}, "", "", "linux", nil},
+		{"doctor", []string{"doctor", "--target", "linux"}, "", "", "linux", nil, nil},
 		{"doctor", []string{"doctor", "--firecracker-binary", "firecracker"}, "", "", "",
-			map[string]any{"binary": "firecracker"}},
-		{"providers", []string{"providers"}, "", "", "linux", map[string]any{"binary": "firecracker"}},
+			map[string]any{"binary": "firecracker"}, nil},
+		{"providers", []string{"providers"}, "", "", "linux", map[string]any{"binary": "firecracker"}, nil},
+		// The containerd-config surface: doctor receives --containerd-image; `providers`
+		// and `describe` must not grow it.
+		{"doctor", []string{"doctor", "--containerd-image", "ghcr.io/opencharly/pod-crabbox:2026.293.1655"}, "", "", "", nil,
+			map[string]any{"image": "ghcr.io/opencharly/pod-crabbox:2026.293.1655"}},
+		{"providers", []string{"providers"}, "", "", "", nil, map[string]any{"image": "ghcr.io/x/y:1"}},
+		{"describe", []string{"providers", "describe", "containerd", "--json"}, "", "containerd", "", nil, map[string]any{"image": "ghcr.io/x/y:1"}},
 	}
 	for _, c := range cases {
-		call, err := resolveCLICall(c.method, c.runID, c.provider, c.target, c.fc)
+		call, err := resolveCLICall(c.method, c.runID, c.provider, c.target, c.fc, c.cd)
 		if err != nil {
 			t.Fatalf("resolveCLICall(%q): %v", c.method, err)
 		}
@@ -79,11 +88,14 @@ func TestResolveCLICall(t *testing.T) {
 			}
 		}
 	}
-	if _, err := resolveCLICall("bogus", "", "", "", nil); err == nil {
+	if _, err := resolveCLICall("bogus", "", "", "", nil, nil); err == nil {
 		t.Error("resolveCLICall(bogus) = nil error, want error")
 	}
-	if _, err := resolveCLICall("events", "", "", "", nil); err == nil {
+	if _, err := resolveCLICall("events", "", "", "", nil, nil); err == nil {
 		t.Error("resolveCLICall(events, no run_id) = nil error, want error")
+	}
+	if _, err := resolveCLICall("describe", "", "", "", nil, nil); err == nil {
+		t.Error("resolveCLICall(describe, no provider) = nil error, want error")
 	}
 }
 
@@ -96,7 +108,7 @@ func TestResolveCLICall(t *testing.T) {
 //	crabbox providers --provider aws  -> flag provided but not defined: -provider
 func TestAcceptsProvider(t *testing.T) {
 	want := map[string]bool{"doctor": true, "leases": true}
-	for _, m := range []string{"version", "providers", "config", "doctor", "leases", "usage", "events", "logs"} {
+	for _, m := range []string{"version", "providers", "describe", "config", "doctor", "leases", "usage", "events", "logs"} {
 		if got := acceptsProvider(m); got != want[m] {
 			t.Errorf("acceptsProvider(%q) = %t, want %t", m, got, want[m])
 		}
@@ -105,7 +117,7 @@ func TestAcceptsProvider(t *testing.T) {
 
 // TestIsCLIMethod pins the HTTP-vs-CLI split.
 func TestIsCLIMethod(t *testing.T) {
-	for _, m := range []string{"version", "providers", "config", "doctor", "leases", "usage", "events", "logs"} {
+	for _, m := range []string{"version", "providers", "describe", "config", "doctor", "leases", "usage", "events", "logs", "containerd-preflight"} {
 		if !isCLIMethod(m) {
 			t.Errorf("isCLIMethod(%q) = false, want true", m)
 		}
@@ -114,6 +126,60 @@ func TestIsCLIMethod(t *testing.T) {
 		if isCLIMethod(m) {
 			t.Errorf("isCLIMethod(%q) = true, want false", m)
 		}
+	}
+}
+
+// TestContainerdPreflightIdentity pins the ONE place the preflight reads the daemon
+// identity from: the open containerd block with the provider's own defaults.
+func TestContainerdPreflightIdentity(t *testing.T) {
+	if got := containerdString(nil, "address", defaultContainerdAddress); got != defaultContainerdAddress {
+		t.Errorf("nil block address = %q, want %q", got, defaultContainerdAddress)
+	}
+	block := map[string]any{"address": " /run/containerd/containerd.sock ", "namespace": "default", "runtime": "krun", "image": "ghcr.io/x/y:1"}
+	cases := []struct {
+		key, want string
+	}{
+		{"address", "/run/containerd/containerd.sock"},
+		{"namespace", "default"},
+		{"runtime", "krun"},
+		{"image", "ghcr.io/x/y:1"},
+		{"missing", "fallback"},
+		{"empty", "fallback"},
+	}
+	block["empty"] = "   "
+	for _, c := range cases {
+		if got := containerdString(block, c.key, "fallback"); got != c.want {
+			t.Errorf("containerdString(%q) = %q, want %q", c.key, got, c.want)
+		}
+	}
+	if got := containerdString(nil, "runtime", defaultContainerdRuntime); got != defaultContainerdRuntime {
+		t.Errorf("nil block runtime = %q, want %q", got, defaultContainerdRuntime)
+	}
+}
+
+// TestNerdctlArgv pins the daemon-identity argv, so every probe names the same
+// address/namespace and the preflight cannot drift from the provider.
+func TestNerdctlArgv(t *testing.T) {
+	got := nerdctlArgv("/run/containerd/containerd.sock", "default", "info")
+	want := []string{"nerdctl", "--address", "/run/containerd/containerd.sock", "--namespace", "default", "info"}
+	if len(got) != len(want) {
+		t.Fatalf("nerdctlArgv = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("nerdctlArgv[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// TestFirstLine pins the skip-reason extraction: the first non-empty line, never a
+// blank prefix from a tool that starts its diagnostics with a newline.
+func TestFirstLine(t *testing.T) {
+	if got := firstLine("\n\n  boom: refused \nsecond"); got != "boom: refused" {
+		t.Errorf("firstLine = %q", got)
+	}
+	if got := firstLine("   \n\t\n"); got != "" {
+		t.Errorf("firstLine(blank) = %q, want empty", got)
 	}
 }
 

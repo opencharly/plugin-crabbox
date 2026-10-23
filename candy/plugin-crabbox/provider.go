@@ -66,6 +66,9 @@ func (provider) Invoke(ctx context.Context, req *pb.InvokeRequest) (*pb.InvokeRe
 	// resolved endpoint. Branching here keeps the two contracts (argv + exit code vs
 	// HTTP status + body) from bleeding into each other.
 	if isCLIMethod(method) {
+		if method == "containerd-preflight" {
+			return invokeContainerdPreflight(ctx, cc, &op, &in)
+		}
 		return invokeCLI(ctx, cc, &op, &in)
 	}
 

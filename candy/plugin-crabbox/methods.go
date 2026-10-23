@@ -33,7 +33,7 @@ type cliCall struct {
 // rather than an HTTP probe from the host.
 func isCLIMethod(m string) bool {
 	switch m {
-	case "version", "providers", "config", "doctor", "leases", "usage", "events", "logs":
+	case "version", "providers", "describe", "config", "doctor", "leases", "usage", "events", "logs", "containerd-preflight":
 		return true
 	}
 	return false
@@ -73,8 +73,19 @@ func acceptsProvider(m string) bool {
 }
 
 // resolveCLICall builds the in-venue CLI invocation for a method, appending the provider
-// selection where the CLI defines it (see acceptsProvider).
-func resolveCLICall(m, runID, provider, target string, fc map[string]any) (cliCall, error) {
+// selection where the CLI defines it (see acceptsProvider). `describe` takes the provider
+// as its POSITIONAL argument (`crabbox providers describe <name> --json`), not as a flag.
+//
+// The provider-key pass-through (firecracker/containerd) follows the SAME measured
+// allowlist as `--provider`: a method whose command does not define those flags must not
+// grow them, or a working probe becomes "flag provided but not defined".
+func resolveCLICall(m, runID, provider, target string, fc, cd map[string]any) (cliCall, error) {
+	if m == "describe" {
+		if provider == "" {
+			return cliCall{}, fmt.Errorf("crabbox: describe requires provider")
+		}
+		return cliCall{Args: []string{"providers", "describe", provider, "--json"}}, nil
+	}
 	args, err := resolveCLIArgs(m, runID)
 	if err != nil {
 		return cliCall{}, err
@@ -86,13 +97,21 @@ func resolveCLICall(m, runID, provider, target string, fc map[string]any) (cliCa
 		if target != "" {
 			args = append(args, "--target", target)
 		}
-		keys := make([]string, 0, len(fc))
-		for k := range fc {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			args = append(args, "--firecracker-"+k, fmt.Sprintf("%v", fc[k]))
+		for _, block := range []struct {
+			flag  string
+			value map[string]any
+		}{
+			{"--firecracker-", fc},
+			{"--containerd-", cd},
+		} {
+			keys := make([]string, 0, len(block.value))
+			for k := range block.value {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				args = append(args, block.flag+k, fmt.Sprintf("%v", block.value[k]))
+			}
 		}
 	}
 	return cliCall{Args: args}, nil
@@ -165,7 +184,7 @@ func dispatchHTTP(ctx context.Context, cc kit.CheckContext, addr string, in *par
 // invokeCLI runs one CLI method inside the venue over the reverse channel and
 // returns the shared verdict.
 func invokeCLI(ctx context.Context, cc kit.CheckContext, op *spec.Op, in *params.CrabboxInput) (*pb.InvokeReply, error) {
-	call, err := resolveCLICall(in.Method, in.RunID, in.Provider, in.Target, in.Firecracker)
+	call, err := resolveCLICall(in.Method, in.RunID, in.Provider, in.Target, in.Firecracker, in.Containerd)
 	if err != nil {
 		return sdk.ResultJSON("fail", err.Error())
 	}

@@ -9,16 +9,23 @@ plugin-crabbox:
             LocalTransport — so an authored `crabbox:` step dispatches through the
             provider registry exactly like a built-in.
 
-            The verb has THREE method classes. In-venue CLI methods (version/providers/
-            config/doctor — credential-free — and leases/usage/events/logs —
+            The verb has FOUR method classes. In-venue CLI methods (version/providers/
+            describe/config/doctor — credential-free — and leases/usage/events/logs —
             broker-backed, requiring a `crabbox login` in the venue) run the `crabbox`
-            binary INSIDE the venue over the reverse channel (cc.Exec). Coordinator
-            HTTP probe methods (health/ready) hit the Node.js/PostgreSQL coordinator's
-            /v1/health and /v1/ready endpoints — the container-probe surface the
-            coordinator exposes — from the charly host against the resolved endpoint
+            binary INSIDE the venue over the reverse channel (cc.Exec). `describe`
+            answers the CLI's own provider description (`providers describe <name>
+            --json`) so a bed asserts the containerd provider from the CLI's vocabulary,
+            not from a transcribed list. `containerd-preflight` is the read-only gate for
+            a containerd lease: it runs the real probes in the venue and returns a
+            VISIBLE SKIP naming the exact absent dependency (a CLI built before the W2
+            provider work, an unreachable daemon, missing xt_multiport, an unpublished
+            lease image) instead of a mock or a false pass. Coordinator HTTP probe
+            methods (health/ready) hit the Node.js/PostgreSQL coordinator's /v1/health and
+            /v1/ready endpoints from the charly host against the resolved endpoint
             (cc.ResolveEndpoint + cc.HTTPDo, one authored step works unchanged against a
-            pod's published port and a VM's forwarded one). All methods are read-only;
-            there are no mutating methods in this first cut.
+            pod's published port and a VM's forwarded one). No method creates, mutates,
+            or releases a lease; the preflight's only write is a `nerdctl pull` that
+            proves the lease image exists.
 
             It is NOT a re-skin of the generic `command:`/`http:` verbs: this plugin
             exists for what those structurally cannot do — ENDPOINT RESOLUTION
@@ -27,10 +34,10 @@ plugin-crabbox:
             with `json_path:` to assert one field; the in-venue CLI methods reach the
             binary where it is installed, which `http:` cannot).
 
-            The R10 consumers are the crabbox-bearing beds (check-crabbox-pod and
-            check-crabbox-e2e-pod) whose checks compose this plugin alongside the
-            `crabbox` CLI candy from opencharly/layer-crabbox and the coordinator candy
-            from opencharly/pod-crabbox.
+            The R10 consumers are the crabbox-bearing beds (check-crabbox-pod,
+            check-crabbox-containerd-e2e and the distro beds) whose checks compose this
+            plugin alongside the `crabbox` CLI candy from opencharly/layer-crabbox and
+            the coordinator candy from opencharly/pod-crabbox.
         plugin:
             source: github.com/opencharly/plugin-crabbox/candy/plugin-crabbox
             providers:
@@ -38,14 +45,25 @@ plugin-crabbox:
             primary:
                 crabbox: method
         plan:
-            - check: the crabbox verb dispatches through the provider registry and reports the pinned CLI version on a live deployment
+            - check: the crabbox verb dispatches through the provider registry and answers with the in-venue CLI's version
               id: crabbox-verb-dispatches
               crabbox:
                 method: version
               stdout:
-                - matches: "0\\.79\\.0"
+                - matches: "([0-9]+\\.[0-9]+\\.[0-9]+|[0-9a-f]{7,40})"
               eventually: 60s
               retry_interval: 5s
+              context:
+                - runtime
+            - check: the containerd provider preflight passes, or a visible SKIP names the exact absent dependency (CLI pin, daemon, xt_multiport, lease image)
+              id: crabbox-containerd-preflight
+              crabbox:
+                method: containerd-preflight
+                provider: containerd
+                containerd:
+                  runtime: crun
+                  image: ghcr.io/opencharly/pod-crabbox:2026.293.1655
+              timeout: 600s
               context:
                 - runtime
 crabbox-skill:

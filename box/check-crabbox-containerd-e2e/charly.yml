@@ -1,0 +1,108 @@
+# check-crabbox-containerd-e2e — the disposable VM bed for the containerd lease.
+#
+# The substrate is a guest running containerd (crun and krun handlers) with the
+# Crabbox CLI inside it; the `crabbox:` verb's read-only `containerd-preflight`
+# method inspects the venue and either passes or returns a VISIBLE SKIP whose
+# message names the exact absent dependency (the CLI pin, the daemon, the kernel's
+# xt_multiport, the lease image).
+#
+# The mutating leg this bed exists to prove — `crabbox run --provider containerd`
+# on a crun lease, then the native checkpoint → fork → restore cycle — is GATED by
+# that preflight and cannot be authored as a run: step yet, because a run: step has
+# no conditional SKIP: today every dependency it needs is absent (see below), and
+# authoring it would ship a red bed that fails on a missing resource instead of
+# naming it. The leg lands with them:
+#
+#   * the source-built CLI — opencharly/layer-crabbox#<W6 PR>: this bed pins the
+#     released 0.79.0 candy because the source build is not merged/tagged yet, and
+#     that CLI has no `containerd` provider at all;
+#   * the lease images — W5 has not published `ghcr.io/opencharly/pod-crabbox`;
+#   * the native checkpoint seam — W2 seam 2 is unmerged and has no PR;
+#   * `xt_multiport` — absent on a host kernel without it (opencharly/layer-containerd#5),
+#     so the CNI portmap hook cannot publish the lease port.
+#
+# A future run of this bed therefore reports `1 skipped` (the preflight) and the
+# reason names the first dependency still missing. It must never report a PASS for
+# a leg it did not run (R7/R8).
+
+check-crabbox-containerd-e2e-base:
+    vm:
+        source:
+            kind: cloud_image
+            url: https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2
+            base_user: arch
+            distro: arch
+        backend: libvirt
+        disk_size: 24G
+        ram: 6G
+        cpu: 2
+        machine: q35
+        firmware: bios
+        ssh:
+            port_auto: true
+            key_source: generate
+        cloud_init:
+            timezone: UTC
+            package:
+                - sudo
+            # The layer's package install runs a full `pacman -Syu`, which replaces the
+            # running kernel's module tree and makes xt_multiport unloadable until a
+            # reboot. The fixture holds the kernel; the layer itself refuses with a
+            # reboot message on a post-upgrade host (opencharly/layer-containerd#5).
+            bootcmd:
+                - "sed -i 's|^#IgnorePkg.*|IgnorePkg = linux linux-headers|' /etc/pacman.conf"
+
+check-crabbox-containerd-e2e-stack:
+    local:
+        description: >-
+            The in-guest stack this bed proves: containerd configured for the host (crun
+            and krun handlers, the narrow seccomp profile, the packaged units) and the
+            Crabbox CLI. The CLI pin is the released candy until the source build lands;
+            the preflight reports that pin when it cannot see the containerd provider.
+        candy:
+            - '@github.com/opencharly/layer-containerd/candy/layer-containerd:v2026.295.1933'
+            - '@github.com/opencharly/layer-crabbox:v2026.293.1705'
+
+check-crabbox-containerd-e2e:
+    vm:
+        from: check-crabbox-containerd-e2e-base
+        disposable: true
+        lifecycle: dev
+        description: >-
+            The containerd lease's disposable guest: containerd on the declared
+            subscription, the Crabbox CLI in the venue, and the `crabbox:` verb's
+            read-only containerd-preflight naming the exact dependency that still
+            blocks a lease. The mutating lease + checkpoint→fork→restore cycle is
+            gated by that preflight and is not authored until its dependencies exist
+            (source-built CLI, W5 lease image, W2 seam 2, xt_multiport).
+        check-crabbox-containerd-e2e-member:
+            local:
+                from: check-crabbox-containerd-e2e-stack
+        plan:
+            - check: the guest's containerd daemon is RUNNING on the declared socket
+              id: containerd-daemon-active
+              context: [runtime]
+              timeout: 120s
+              command: |
+                set -eu
+                if [ "$(id -u)" = 0 ]; then as_root() { "$@"; }; else as_root() { sudo -n "$@"; }; fi
+                as_root systemctl is-active containerd.service
+                as_root test -S /run/containerd/containerd.sock
+                echo "containerd is active and the socket exists"
+            - check: the in-venue crabbox CLI answers --version (a commit or a release, printed for the record)
+              id: crabbox-cli-version
+              context: [runtime]
+              exit_status: 0
+              stdout:
+                - matches: "([0-9]+\\.[0-9]+\\.[0-9]+|[0-9a-f]{7,40})"
+              command: /usr/local/bin/crabbox --version
+            - check: the read-only containerd preflight either passes or SKIPS naming the exact absent dependency
+              id: containerd-preflight
+              context: [runtime]
+              timeout: 600s
+              crabbox:
+                  method: containerd-preflight
+                  provider: containerd
+                  containerd:
+                      runtime: crun
+                      image: ghcr.io/opencharly/pod-crabbox:2026.293.1655
