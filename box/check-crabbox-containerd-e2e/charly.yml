@@ -10,12 +10,17 @@
 # `layer-crabbox:v2026.296.1129`, whose `crabbox --version` is the
 # `opencharly/crabbox` b7b5aaa3 commit and whose `providers` lists `containerd`.
 # The preflight now walks PAST the CLI and reports the first dependency that is
-# still missing, in order:
+# still missing. MEASURED on this bed (run 2026.296.1210), the first is the
+# DAEMON/CLIENT posture: `nerdctl` running as the venue user resolves to rootless
+# containerd while the guest daemon is the rootful system service, so the probe
+# reports `rootless containerd not running`. The remaining items, in the order the
+# preflight reaches them once the daemon is reachable:
 #
 #   * the lease image — W5 has not published `ghcr.io/opencharly/pod-crabbox:2026.293.1655`;
-#   * the native checkpoint seam — W2 seam 2 is unmerged and has no PR;
 #   * `xt_multiport` — where the guest kernel lacks it, the CNI portmap hook cannot
-#     publish the lease port (opencharly/layer-containerd#5).
+#     publish the lease port (opencharly/layer-containerd#5);
+#   * the native checkpoint seam — W2 seam 2 is unmerged and has no PR (reached only
+#     by the checkpoint leg, after a lease exists).
 #
 # The mutating leg this bed exists to prove — `crabbox run --provider containerd`
 # on a crun lease, then the native checkpoint → fork → restore cycle — is GATED by
