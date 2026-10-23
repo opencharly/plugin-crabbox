@@ -17,12 +17,13 @@
 	// method — the operation (also the scalar-sugar primary, so `crabbox: version`
 	// desugars to {method: "version"}).
 	//
-	// In-venue CLI methods (version/providers/config/doctor/leases/usage/events/logs)
-	// run inside the venue where the `crabbox` binary is installed; coordinator HTTP
-	// probe methods (health/ready) are issued from the charly HOST against the
-	// resolved coordinator endpoint. All are read-only — there are no mutating
-	// methods in this first cut.
-	method: "version" | "providers" | "config" | "doctor" | "health" | "ready" | "leases" | "usage" | "events" | "logs"
+	// In-venue CLI methods (version/providers/describe/config/doctor/leases/usage/
+	// events/logs and the containerd-preflight gate) run inside the venue where the
+	// `crabbox` binary is installed; coordinator HTTP probe methods (health/ready) are
+	// issued from the charly HOST against the resolved coordinator endpoint. No method
+	// creates, mutates, or releases a lease: `containerd-preflight` may pull the lease
+	// image into the local image store to prove the ref exists, and nothing else.
+	method: "version" | "providers" | "describe" | "config" | "doctor" | "health" | "ready" | "leases" | "usage" | "events" | "logs" | "containerd-preflight"
 
 	// port — the coordinator port to probe for health/ready. Default 8080 (the
 	// crabbox-coordinator candy's published port).
@@ -46,16 +47,25 @@
 	run_id?: string @go(RunID)
 
 	// provider — the provider to select for the methods whose CLI command DEFINES the
-	// `--provider <name>` flag. MEASURED at the pinned v0.79.0: `doctor` and `leases`
-	// (which runs `crabbox list`) accept it; `usage` and `providers` reject it
-	// ("flag provided but not defined: -provider"), so it is passed through only where the
-	// CLI defines it. Unset = the CLI's own configured/ambient selection, which is what the
-	// previous surface always got.
+	// `--provider <name>` flag. `doctor` and `leases` (which runs `crabbox list`) accept
+	// it; `describe` takes the provider as its POSITIONAL argument
+	// (`crabbox providers describe <name>`); `usage` and `providers` reject the flag
+	// ("flag provided but not defined: -provider"), so it is passed through only where
+	// the CLI defines it. Unset = the CLI's own configured/ambient selection, which is
+	// what the previous surface always got.
 	provider?: string
 
 	// target — the provider's target platform, passed through as the CLI's `--target <os>` flag.
 	// The firecracker provider is Linux-only, so `target: linux` is the meaningful value there.
 	target?: string @go(Target)
+
+	// containerd — the containerd provider's own configuration keys, passed through as
+	// the CLI's `--containerd-<key> <value>` flags on the methods that define them
+	// (`doctor`, `leases`), and read directly by `containerd-preflight` for the
+	// dependency it names (address/namespace/runtime/image). Same open-block contract as
+	// `firecracker:`: the provider's key set is its own surface, so a closed copy here
+	// would drift the moment upstream adds a key (R2).
+	containerd?: {...} @go(Containerd)
 
 	// firecracker — the provider's own configuration keys, passed through as the CLI's
 	// `--firecracker-<key> <value>` flags. Measured from the provider's documented Configuration

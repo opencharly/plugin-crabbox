@@ -15,15 +15,22 @@ through the provider registry exactly like a built-in.
 
 ## The verb
 
-Three method classes, all read-only:
+Four method classes, all read-only with respect to leases:
 
 - **In-venue CLI — credential-free** — `version` (`crabbox --version`),
-  `providers`, `config`, `doctor`. Run the `crabbox` binary inside the venue over
-  the reverse channel.
+  `providers`, `describe` (`crabbox providers describe <name> --json`), `config`,
+  `doctor`. Run the `crabbox` binary inside the venue over the reverse channel.
+- **In-venue CLI — containerd gate** — `containerd-preflight`. Runs the real
+  probes a containerd lease needs (CLI provider, daemon, `xt_multiport`, lease
+  image) and returns a VISIBLE SKIP naming the exact absent dependency instead of
+  a mock or a false pass.
 - **In-venue CLI — broker-backed** — `leases`, `usage`, `events`, `logs`.
   Require a prior `crabbox login` in the venue.
 - **Coordinator HTTP probe** — `health` (`/v1/health`), `ready` (`/v1/ready`),
   issued from the charly host against the resolved coordinator endpoint.
+
+No method creates, mutates, or releases a lease; the preflight's only write is a
+`nerdctl pull` proving the configured lease image exists in a registry.
 
 It is not a re-skin of the generic `command:` / `http:` verbs: it adds ENDPOINT
 RESOLUTION (`cc.ResolveEndpoint` turns the in-venue coordinator port into a
@@ -44,25 +51,36 @@ Compose the plugin candy in a box or check bed's `candy:` list:
 Then author the verb in a plan (scalar sugar shown):
 
 ```yaml
-- check: the pinned crabbox CLI version is installed
+- check: the in-venue crabbox CLI answers with a version (a commit or a release)
   crabbox: version
   stdout:
-    - matches: "0\\.79\\.0"
+    - matches: "([0-9]+\\.[0-9]+\\.[0-9]+|[0-9a-f]{7,40})"
   eventually: 60s
   retry_interval: 5s
 
-- check: the local container provider is selected and its local prerequisites are ready
+- check: the containerd provider is described by the CLI itself
   crabbox:
-    method: doctor
-    provider: local-container
+    method: describe
+    provider: containerd
+  json_path: provider.canonical
   stdout:
-    - contains: "provider=local-container"
+    - contains: "containerd"
+
+- check: the containerd lease's dependencies are present, or a visible SKIP names the missing one
+  crabbox:
+    method: containerd-preflight
+    provider: containerd
+    containerd:
+      runtime: crun
+      image: ghcr.io/opencharly/pod-crabbox:2026.293.1655
 ```
 
 Install the CLI itself with the `crabbox` candy
-([`opencharly/layer-crabbox`](https://github.com/opencharly/layer-crabbox)) and
-the coordinator with the `crabbox-coordinator` candy
-(`opencharly/pod-crabbox`).
+([`opencharly/layer-crabbox`](https://github.com/opencharly/layer-crabbox)) — it
+BUILDS the pinned `opencharly/crabbox` commit so the `containerd` provider is
+present, which no `openclaw/crabbox` release carries — select the provider with
+its `crabbox-containerd-config` candy, and install the coordinator with the
+`crabbox-coordinator` candy (`opencharly/pod-crabbox`).
 
 ## Layout
 
@@ -73,7 +91,13 @@ the coordinator with the `crabbox-coordinator` candy
   `cmd/serve/main.go`.
 - `candy/plugin-crabbox/charly.yml` — the `plugin-crabbox:` candy entity plus
   the embedded `crabbox-skill:` skill entity.
-- `charly.yml` — the root project manifest (`discover: candy`).
+- `.agents/skills/crabbox/SKILL.md` — the owning skill (projected into the
+  marketplace as `/charly-check:crabbox`).
+- `box/check-crabbox-pod/` — the minimal POD witness (the CLI + the verb).
+- `box/check-crabbox-containerd-e2e/` — the disposable VM bed for a containerd
+  lease: containerd in the guest, the CLI in the venue, and the preflight that
+  names the dependency still blocking the mutating cycle.
+- `charly.yml` — the root project manifest (`discover: candy` + `discover: box`).
 - `.github/workflows/tag-on-merge.yml` — CalVer tag + `CHANGELOG/` on merge.
 
 ## Related
