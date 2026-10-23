@@ -6,23 +6,24 @@
 # message names the exact absent dependency (the CLI pin, the daemon, the kernel's
 # xt_multiport, the lease image).
 #
+# The SOURCE-BUILT CLI is resolved: this bed pins
+# `layer-crabbox:v2026.296.1129`, whose `crabbox --version` is the
+# `opencharly/crabbox` b7b5aaa3 commit and whose `providers` lists `containerd`.
+# The preflight now walks PAST the CLI and reports the first dependency that is
+# still missing, in order:
+#
+#   * the lease image — W5 has not published `ghcr.io/opencharly/pod-crabbox:2026.293.1655`;
+#   * the native checkpoint seam — W2 seam 2 is unmerged and has no PR;
+#   * `xt_multiport` — where the guest kernel lacks it, the CNI portmap hook cannot
+#     publish the lease port (opencharly/layer-containerd#5).
+#
 # The mutating leg this bed exists to prove — `crabbox run --provider containerd`
 # on a crun lease, then the native checkpoint → fork → restore cycle — is GATED by
 # that preflight and cannot be authored as a run: step yet, because a run: step has
-# no conditional SKIP: today every dependency it needs is absent (see below), and
-# authoring it would ship a red bed that fails on a missing resource instead of
-# naming it. The leg lands with them:
-#
-#   * the source-built CLI — opencharly/layer-crabbox#<W6 PR>: this bed pins the
-#     released 0.79.0 candy because the source build is not merged/tagged yet, and
-#     that CLI has no `containerd` provider at all;
-#   * the lease images — W5 has not published `ghcr.io/opencharly/pod-crabbox`;
-#   * the native checkpoint seam — W2 seam 2 is unmerged and has no PR;
-#   * `xt_multiport` — absent on a host kernel without it (opencharly/layer-containerd#5),
-#     so the CNI portmap hook cannot publish the lease port.
-#
-# A future run of this bed therefore reports `1 skipped` (the preflight) and the
-# reason names the first dependency still missing. It must never report a PASS for
+# no conditional SKIP: with the dependencies above still absent, authoring it would
+# ship a red bed that fails on a missing resource instead of naming it. The leg
+# lands with them. A run of this bed reports `1 skipped` (the preflight) and the
+# reason names the first dependency still missing; it must never report a PASS for
 # a leg it did not run (R7/R8).
 
 check-crabbox-containerd-e2e-base:
@@ -61,7 +62,11 @@ check-crabbox-containerd-e2e-stack:
             the preflight reports that pin when it cannot see the containerd provider.
         candy:
             - '@github.com/opencharly/layer-containerd/candy/layer-containerd:v2026.295.1933'
-            - '@github.com/opencharly/layer-crabbox:v2026.293.1705'
+            # `nerdctl` is the containerd provider's CLIENT (the transport it runs
+            # leases through and the client the preflight probes with); the containerd
+            # layer installs the daemon and `crictl`, not nerdctl.
+            - '@github.com/opencharly/layer-nerdctl/candy/layer-nerdctl:v2026.295.2041'
+            - '@github.com/opencharly/layer-crabbox:v2026.296.1129'
 
 check-crabbox-containerd-e2e:
     vm:
