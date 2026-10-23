@@ -147,7 +147,7 @@ func invokeContainerdPreflight(ctx context.Context, cc kit.CheckContext, op *spe
 		return skip("the kernel has no xt_multiport match, so the CNI portmap hook cannot publish the lease SSH port (opencharly/layer-containerd#5)")
 	}
 
-	// 5. The lease image must exist in a registry the venue can pull from. A local
+	// 5. The lease image must exist in a registry the venue can pull from.
 	// An image already in the local store is enough for the lease to run, so `inspect`
 	// is the fast path; when it is absent, `pull` is the REAL check — the ref is resolved
 	// against the registry the lease will use, not assumed from a tag name.
