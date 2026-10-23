@@ -19,5 +19,5 @@ check-crabbox-pod-image:
         platform:
             - linux/amd64
         candy:
-            - '@github.com/opencharly/layer-crabbox:v2026.293.1001'
+            - '@github.com/opencharly/layer-crabbox:v2026.296.1129'
             - plugin-crabbox
