@@ -49,9 +49,10 @@ Canonical files:
 - The merge gate is the **org-wide** `charly/pr-validator` (required check
   `validate / validate`, defined in `opencharly/.github`); this repo has **no**
   per-repo candy gate.
-- The R10 consumers are the crabbox-bearing beds (`check-crabbox-pod`,
-  `check-crabbox-containerd-e2e`), whose checks compose this plugin alongside the
-  `crabbox` CLI candy and the coordinator candy.
+- The R10 consumers are the crabbox-bearing beds in this repo
+  (`check-crabbox-pod`, `check-crabbox-containerd-e2e`) and the distro beds
+  (`check-crabbox-e2e-pod` in distro-cachyos), whose checks compose this plugin
+  alongside the `crabbox` CLI candy and the coordinator candy.
 - `charly candy params plugin-crabbox --check` must report the generated params as
   current after any schema edit.
 

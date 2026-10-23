@@ -148,8 +148,9 @@ func invokeContainerdPreflight(ctx context.Context, cc kit.CheckContext, op *spe
 	}
 
 	// 5. The lease image must exist in a registry the venue can pull from. A local
-	// `inspect` is the fast path; a pull is the REAL check (never assume a cache means
-	// the registry still serves the tag).
+	// An image already in the local store is enough for the lease to run, so `inspect`
+	// is the fast path; when it is absent, `pull` is the REAL check — the ref is resolved
+	// against the registry the lease will use, not assumed from a tag name.
 	if image != "" {
 		if _, _, inspectExit, err := exec(shellJoin(nerdctlArgv(address, namespace, "image", "inspect", image))); err != nil {
 			return fail("nerdctl image inspect: %v", err)

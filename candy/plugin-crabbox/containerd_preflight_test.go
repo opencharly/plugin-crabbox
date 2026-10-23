@@ -57,9 +57,9 @@ func scriptedVenue(rules []scriptRule) spec.CheckContext {
 }
 
 // baseRules scripts a venue whose CLI carries the provider. The match strings are
-// single argv TOKENS (the preflight shell-quotes every argument), and the SPECIFIC
-// nerdctl subcommands precede the generic `nerdctl` rule because every probe's
-// script contains the binary name.
+// single argv TOKENS (the preflight shell-quotes every argument), and each nerdctl
+// subcommand has its OWN rule because every probe's script also contains the
+// binary name.
 func baseRules() []scriptRule {
 	return []scriptRule{
 		{match: "--version", out: "b7b5aaa312fdcd0711b4407935ce4d50117e8155\n"},                         // 0
