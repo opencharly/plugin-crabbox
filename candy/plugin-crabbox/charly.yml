@@ -37,7 +37,7 @@ plugin-crabbox:
             The R10 consumers are the crabbox-bearing beds (check-crabbox-pod,
             check-crabbox-containerd-e2e and the distro beds) whose checks compose this
             plugin alongside the `crabbox` CLI candy from opencharly/layer-crabbox and
-            the coordinator candy from opencharly/pod-crabbox.
+            the coordinator candy from opencharly/pod-crabbox-coordinator.
         plugin:
             source: github.com/opencharly/plugin-crabbox/candy/plugin-crabbox
             providers:
