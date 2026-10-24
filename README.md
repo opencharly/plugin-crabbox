@@ -80,7 +80,7 @@ Install the CLI itself with the `crabbox` candy
 BUILDS the pinned `opencharly/crabbox` commit so the `containerd` provider is
 present, which no `openclaw/crabbox` release carries — select the provider with
 its `crabbox-containerd-config` candy, and install the coordinator with the
-`crabbox-coordinator` candy (`opencharly/pod-crabbox`).
+`crabbox-coordinator` candy (`opencharly/pod-crabbox-coordinator`).
 
 ## Layout
 
